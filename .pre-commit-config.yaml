@@ -19,9 +19,7 @@ repos:
     hooks:
       - id: helm-lint
         name: helm lint
-        # `cd` into each chart and lint `.` so this works even when `helm` is a
-        # WSL/Rancher Desktop wrapper that mangles relative path arguments.
-        entry: bash -c 'set -e; for c in charts/*/; do (cd "$c" && helm lint .); done'
+        entry: bash scripts/helm-lint-all.sh
         language: system
         pass_filenames: false
         files: ^charts/
