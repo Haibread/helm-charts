@@ -1,0 +1,25 @@
+{{ include "suggestarr.fullname" . }} is starting.
+
+Service: {{ include "suggestarr.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+Note: SuggestArr's HTTP port is controlled by the SUGGESTARR_PORT env var. If you change `service.port`,
+also update `env.SUGGESTARR_PORT` (and vice versa) — they must match the container port.
+
+{{- if .Values.ingress.enabled }}
+
+Reach the UI via Ingress:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ (index .paths 0).path }}
+{{- end }}
+{{- else if .Values.httpRoute.enabled }}
+
+Reach the UI via HTTPRoute hostnames:
+{{- range .Values.httpRoute.hostnames }}
+  http(s)://{{ . }}/
+{{- end }}
+{{- else }}
+
+Port-forward to try it locally:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "suggestarr.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  open http://localhost:{{ .Values.service.port }}
+{{- end }}

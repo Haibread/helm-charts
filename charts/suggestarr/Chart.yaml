@@ -1,0 +1,19 @@
+apiVersion: v2
+name: suggestarr
+description: Media-recommendation engine that suggests content for Jellyfin/Plex/Emby via Jellyseerr/Overseerr.
+type: application
+version: 0.1.0
+appVersion: "2.6.0"
+home: https://github.com/giuseppe99barchetta/SuggestArr
+sources:
+  - https://github.com/giuseppe99barchetta/SuggestArr
+keywords:
+  - suggestarr
+  - jellyseerr
+  - overseerr
+  - jellyfin
+  - plex
+  - emby
+maintainers:
+  - name: theob
+    email: theobarbou@gmail.com

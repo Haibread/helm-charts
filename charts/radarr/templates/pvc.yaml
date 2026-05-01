@@ -1,0 +1,22 @@
+{{- $root := . -}}
+{{- range $key, $vol := .Values.persistence }}
+{{- if and $vol.enabled (not $vol.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "radarr.pvcName" (dict "root" $root "key" $key) }}
+  labels:
+    {{- include "radarr.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $key }}
+spec:
+  accessModes:
+    {{- toYaml $vol.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $vol.size | quote }}
+  {{- if $vol.storageClass }}
+  storageClassName: {{ $vol.storageClass | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

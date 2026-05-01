@@ -1,0 +1,123 @@
+replicaCount: 1
+
+image:
+  repository: lscr.io/linuxserver/radarr
+  # linuxserver tags do not track Radarr appVersion 1:1; pin a digest in production.
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 7878
+
+# linuxserver entrypoint expects strings — keep numeric values quoted.
+# Note: the linuxserver image needs to start as root to drop privileges via PUID/PGID.
+# Setting securityContext.runAsNonRoot: true will break the container.
+env:
+  PUID: "1000"
+  PGID: "1000"
+  TZ: Etc/UTC
+  UMASK: "022"
+
+extraEnv: []
+
+# One PVC per enabled volume; set existingClaim to reuse an external PVC.
+persistence:
+  config:
+    enabled: true
+    existingClaim: ""
+    size: 2Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /config
+  movies:
+    enabled: true
+    existingClaim: ""
+    size: 100Gi
+    storageClass: ""
+    # Override to ReadWriteMany if your downloader needs to share this volume.
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /movies
+  downloads:
+    enabled: true
+    existingClaim: ""
+    size: 50Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /downloads
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: radarr.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  hostnames: []
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+probes:
+  liveness:
+    httpGet:
+      path: /ping
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    httpGet:
+      path: /ping
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+resources: {}
+# limits:
+#   cpu: 1000m
+#   memory: 1Gi
+# requests:
+#   cpu: 100m
+#   memory: 256Mi
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# Do NOT set runAsNonRoot: true — see env note above.
+securityContext: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,22 @@
+{{ include "radarr.fullname" . }} is starting.
+
+Service: {{ include "radarr.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+
+Reach the UI via Ingress:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ (index .paths 0).path }}
+{{- end }}
+{{- else if .Values.httpRoute.enabled }}
+
+Reach the UI via HTTPRoute hostnames:
+{{- range .Values.httpRoute.hostnames }}
+  http(s)://{{ . }}/
+{{- end }}
+{{- else }}
+
+Port-forward to try it locally:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "radarr.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  open http://localhost:{{ .Values.service.port }}
+{{- end }}

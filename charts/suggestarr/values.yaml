@@ -1,0 +1,111 @@
+replicaCount: 1
+
+image:
+  repository: ciuse99/suggestarr
+  # Defaults to .Chart.AppVersion when empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 5000
+
+# If you change the port here, also update env.SUGGESTARR_PORT.
+env:
+  SUGGESTARR_PORT: "5000"
+  LOG_LEVEL: info
+
+# Extra env vars passed straight through to the container.
+extraEnv: []
+# - name: HTTP_PROXY
+#   value: http://proxy.example.com:8080
+
+persistence:
+  enabled: true
+  # Set to use an existing PVC instead of creating one.
+  existingClaim: ""
+  size: 1Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  mountPath: /app/config/config_files
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: suggestarr.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: suggestarr-tls
+  #   hosts:
+  #     - suggestarr.example.com
+
+# Gateway API HTTPRoute (gateway.networking.k8s.io/v1).
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  # - name: my-gateway
+  #   namespace: gateway-system
+  hostnames: []
+  # - suggestarr.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+networkPolicy:
+  enabled: false
+  # When enabled with empty ingress/egress, the policy is deny-all for that direction.
+  ingress: []
+  egress: []
+
+probes:
+  liveness:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+resources: {}
+# limits:
+#   cpu: 500m
+#   memory: 512Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
