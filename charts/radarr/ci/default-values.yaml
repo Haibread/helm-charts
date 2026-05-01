@@ -1,0 +1,8 @@
+# Defaults, but shrink PVCs so kind's local-path-provisioner is happy on a small runner.
+persistence:
+  config:
+    size: 100Mi
+  movies:
+    size: 100Mi
+  downloads:
+    size: 100Mi

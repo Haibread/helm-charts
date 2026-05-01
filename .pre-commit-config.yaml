@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ["-c", ".github/linters/.yamllint.yaml"]
+        files: ^(charts/.*\.ya?ml|\.github/.*\.ya?ml|ct\.yaml)$
+        exclude: ^charts/[^/]+/templates/
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.13.0
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--config", ".github/linters/.markdownlint.yaml"]
+        files: \.md$
+        exclude: ^(node_modules/|charts/[^/]+/VALUES\.md$)
+
+  - repo: local
+    hooks:
+      - id: helm-lint
+        name: helm lint
+        # `cd` into each chart and lint `.` so this works even when `helm` is a
+        # WSL/Rancher Desktop wrapper that mangles relative path arguments.
+        entry: bash -c 'set -e; for c in charts/*/; do (cd "$c" && helm lint .); done'
+        language: system
+        pass_filenames: false
+        files: ^charts/
+
+      # The hooks below soft-skip when the binary is missing so cross-platform
+      # contributors aren't blocked. CI runs the same checks unconditionally.
+      - id: helm-docs
+        name: helm-docs (skip if not installed)
+        entry: bash -c 'command -v helm-docs >/dev/null || { echo "  helm-docs not installed — skipping. Install from https://github.com/norwoodj/helm-docs/releases"; exit 0; }; helm-docs --template-files="$(pwd)/.github/helm-docs/values.gotmpl" --output-file=VALUES.md && git diff --exit-code -- charts/*/VALUES.md'
+        language: system
+        pass_filenames: false
+        files: ^charts/.*/(Chart\.yaml|values\.yaml|VALUES\.md|README\.md\.gotmpl)$
+
+      - id: ct-lint
+        name: ct lint (skip if not installed)
+        entry: bash -c 'command -v ct >/dev/null || { echo "  ct not installed — skipping. Install from https://github.com/helm/chart-testing"; exit 0; }; ct lint --config ct.yaml'
+        language: system
+        pass_filenames: false
+        files: ^(charts/|ct\.yaml$)

@@ -30,6 +30,7 @@ See [`values.yaml`](values.yaml) for the full list.
 
 - The container listen port is set by `SUGGESTARR_PORT`. If you change it, also change `service.port` — both are derived from the same value, so override them together.
 - After install, port-forward to reach the UI:
+
   ```sh
   kubectl port-forward svc/suggestarr 5000:5000
   ```

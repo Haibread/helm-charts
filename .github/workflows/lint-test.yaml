@@ -1,0 +1,133 @@
+name: Lint and test charts
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "ct.yaml"
+      - ".github/workflows/lint-test.yaml"
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+      - "ct.yaml"
+      - ".github/workflows/lint-test.yaml"
+  workflow_dispatch:
+    inputs:
+      run_all:
+        description: "Test all charts (not just changed ones)"
+        type: boolean
+        default: false
+
+jobs:
+  # Fast, cluster-less job: lint + template-render every chart with several value
+  # scenarios, including the gated resources (Ingress, HTTPRoute, NetworkPolicy).
+  lint-and-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.17.0
+
+      # `helm lint` and `ct lint` run in the dedicated lint workflow (.github/workflows/lint.yaml).
+      # This job focuses on rendering and schema validation against real cluster API surfaces.
+
+      - name: helm template (defaults + all gates on)
+        run: |
+          set -e
+          for chart in charts/*/; do
+            name=$(basename "$chart")
+            echo "=== template $name :: defaults ==="
+            helm template t "$chart" >/dev/null
+
+            echo "=== template $name :: ingress + networkpolicy ==="
+            helm template t "$chart" \
+              --set ingress.enabled=true \
+              --set networkPolicy.enabled=true >/dev/null
+
+            echo "=== template $name :: httproute ==="
+            helm template t "$chart" \
+              --set httpRoute.enabled=true \
+              --set httpRoute.parentRefs[0].name=gw \
+              --set httpRoute.parentRefs[0].namespace=gateway-system >/dev/null
+          done
+
+      - name: kubeconform (validate rendered manifests)
+        run: |
+          set -e
+          curl -sSL -o kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz
+          sudo mv kubeconform /usr/local/bin/
+
+          # HTTPRoute is a CRD — provide schema location.
+          GW_SCHEMA="https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}-standalone-strict/{{.ResourceKind}}{{.KindSuffix}}.json"
+          CRD_SCHEMA="https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+
+          for chart in charts/*/; do
+            name=$(basename "$chart")
+            echo "=== kubeconform $name ==="
+            helm template t "$chart" \
+              --set ingress.enabled=true \
+              --set httpRoute.enabled=true \
+              --set httpRoute.parentRefs[0].name=gw \
+              --set networkPolicy.enabled=true \
+              | kubeconform \
+                  -strict \
+                  -ignore-missing-schemas \
+                  -schema-location default \
+                  -schema-location "$CRD_SCHEMA" \
+                  -summary
+          done
+
+  # Live job: spin up kind, install each (changed) chart with every ci/*-values.yaml,
+  # wait for readiness, run `helm test` (the test-connection pod we ship).
+  install-test:
+    runs-on: ubuntu-latest
+    needs: lint-and-template
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # ct needs history to diff against target-branch
+
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.17.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install chart-testing
+        uses: helm/chart-testing-action@v2.6.1
+
+      - name: List changed charts
+        id: changed
+        run: |
+          changed=$(ct list-changed --config ct.yaml)
+          if [ -n "$changed" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "Changed charts:"; echo "$changed"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No charts changed."
+          fi
+
+      - name: Create kind cluster
+        if: steps.changed.outputs.found == 'true' || inputs.run_all == true
+        uses: helm/kind-action@v1.10.0
+        with:
+          version: v0.23.0
+          node_image: kindest/node:v1.30.0
+          wait: 120s
+
+      - name: ct install
+        if: steps.changed.outputs.found == 'true' || inputs.run_all == true
+        run: |
+          if [ "${{ inputs.run_all }}" = "true" ]; then
+            ct install --config ct.yaml --all
+          else
+            ct install --config ct.yaml
+          fi

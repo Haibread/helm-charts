@@ -1,0 +1,69 @@
+name: Lint
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "ct.yaml"
+      - ".github/workflows/lint.yaml"
+      - ".github/linters/**"
+      - ".github/helm-docs/**"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # ct lint diffs against target-branch
+
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.17.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install chart-testing
+        uses: helm/chart-testing-action@v2.6.1
+
+      - name: ct lint
+        run: ct lint --config ct.yaml
+
+      - name: yamllint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          config_file: .github/linters/.yamllint.yaml
+          file_or_dir: charts/ .github/ ct.yaml
+
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            **/*.md
+            !**/node_modules/**
+          config: .github/linters/.markdownlint.yaml
+
+      - name: Install helm-docs
+        run: |
+          set -e
+          version=1.14.2
+          curl -sSL -o helm-docs.tgz \
+            "https://github.com/norwoodj/helm-docs/releases/download/v${version}/helm-docs_${version}_Linux_x86_64.tar.gz"
+          tar -xzf helm-docs.tgz helm-docs
+          sudo mv helm-docs /usr/local/bin/
+
+      - name: helm-docs drift check
+        run: |
+          set -e
+          helm-docs \
+            --template-files="$(pwd)/.github/helm-docs/values.gotmpl" \
+            --output-file=VALUES.md
+          if ! git diff --exit-code -- charts/*/VALUES.md; then
+            echo
+            echo "::error::charts/*/VALUES.md is out of sync with values.yaml."
+            echo "Run helm-docs locally and commit the result:"
+            echo "  helm-docs --template-files=\$(pwd)/.github/helm-docs/values.gotmpl --output-file=VALUES.md"
+            exit 1
+          fi

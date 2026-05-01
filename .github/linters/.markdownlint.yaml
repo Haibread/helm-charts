@@ -1,0 +1,15 @@
+---
+default: true
+
+# Allow long lines (tables, URLs).
+MD013: false
+
+# Allow inline HTML (badges, details/summary).
+MD033: false
+
+# Allow duplicate headings across files (e.g. "## Install" in every chart README).
+MD024:
+  siblings_only: true
+
+# Don't require a top-level H1 in every file.
+MD041: false

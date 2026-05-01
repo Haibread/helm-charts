@@ -1,0 +1,14 @@
+ingress:
+  enabled: true
+  hosts:
+    - host: suggestarr.ci.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - {}        # allow all ingress (for the helm test pod)
+  egress:
+    - {}        # allow all egress

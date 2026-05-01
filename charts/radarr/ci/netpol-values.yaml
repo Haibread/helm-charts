@@ -1,0 +1,14 @@
+persistence:
+  config:
+    size: 100Mi
+  movies:
+    enabled: false
+  downloads:
+    enabled: false
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - {}
+  egress:
+    - {}

@@ -32,6 +32,6 @@ See [`values.yaml`](values.yaml) for the full list.
 
 The linuxserver image must start as root in order to drop privileges via `PUID`/`PGID`. **Do not set `securityContext.runAsNonRoot: true`** — it will break the container. The defaults leave `securityContext` empty for this reason.
 
-## Sharing volumes with Sonarr/Prowlarr/etc.
+## Sharing volumes with Sonarr/Prowlarr/etc
 
 If you run other *arr apps that need the same `/movies` and `/downloads` paths, point them at the same PVCs via `persistence.movies.existingClaim` (and ensure the underlying storage class supports `ReadWriteMany`).
