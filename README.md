@@ -16,3 +16,7 @@ helm install my-release ./charts/<chart-name>
 ```
 
 Each chart's `README.md` documents the values it accepts.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). To report a vulnerability, see [SECURITY.md](SECURITY.md).
